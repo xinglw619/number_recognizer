@@ -9,6 +9,11 @@ typedef int16_t data_t;
 typedef int int32_t;
 
 
+#include <stdlib.h>
+#include <stdint.h>
+
+typedef int16_t data_t; // å®šä¹‰æ•°æ®ç±»å‹
+
 
 
 void conv2d_f32(data_t* dout,
@@ -21,17 +26,17 @@ void conv2d_f32(data_t* dout,
 {
     int din_size = din_hgt * din_wid;
     
-    // ¾í»ıºË³ß´ç
+    // å·ç§¯æ ¸å°ºå¯¸
     int num_cout = shape[0], num_cin = shape[1];
     int k_hgt = shape[2], k_wid = shape[3];
     int k_size = k_hgt * k_wid;
     
-    // Êä³öÊı¾İ³ß´ç
+    // è¾“å‡ºæ•°æ®å°ºå¯¸
     int dout_hgt = (din_hgt - k_hgt + 1);
     int dout_wid = (din_wid - k_wid + 1);
     int dout_size = dout_hgt * dout_wid;
 
-    // Ê¹ÓÃ32Î»ÕûÊı±£´æÀÛ»ı½á¹û
+    // ä½¿ç”¨æ›´å¤§ä½æ•°çš„æ•°æ®ç±»å‹å­˜å‚¨ç»“æœ
     int32_t* int_accum = (int32_t*)malloc(dout_size * sizeof(int32_t));
 
     for (int i = 0; i < dout_size; i++)
@@ -52,7 +57,7 @@ void conv2d_f32(data_t* dout,
 
     for (int cout = 0; cout < num_cout; cout++, dout_sel += dout_size)
     {
-        // ¼ÓÉÏÆ«ÖÃ
+        // åŠ ä¸Šåç½®
         for (int n = 0; n < dout_size; n++)
         {
             int_accum[n] = bias[cout];
@@ -77,7 +82,7 @@ void conv2d_f32(data_t* dout,
                     {
                         for (int w = 0; w < dout_wid; w++, dout_elm++)
                         {
-                            // ÀÛ»ı¹ı³ÌÊ¹ÓÃint32_t
+                            // ç´¯ç§¯è¿‡ç¨‹ä½¿ç”¨int32_t
                             int_accum[h * dout_wid + w] += din_elm[w] * (*ker_elm);
                         }
                     }
@@ -85,21 +90,21 @@ void conv2d_f32(data_t* dout,
             }
         }
 
-        //±¥ºÍ»ò½Ø¶Ï´¦Àí
-        for (int i = 0; i < dout_size; i++)
-        {
-            if (int_accum[i] > INT16_MAX)
+        for (int i = 0; i < dout_size; i++){
+            float scaled_value = int_accum[i] * 0.001;
+            // dout_sel[i] = (int16_t)scaled_value;  //ä½¿ç”¨äº†æˆªæ–­çš„æ–¹å¼
+                // é¥±å’Œå¤„ç†
+            if (scaled_value > INT16_MAX) {
                 dout_sel[i] = INT16_MAX;
-            else if (int_accum[i] < INT16_MIN)
+            } else if (scaled_value < INT16_MIN) {
                 dout_sel[i] = INT16_MIN;
-            else
-                dout_sel[i] = (data_t)int_accum[i];
+            } else {
+                // å°†ç¼©å°åçš„å€¼è½¬æ¢ä¸º16ä½å®šç‚¹æ•°
+                dout_sel[i] = (int16_t)scaled_value;
+            }
+
+
         }
-
-        // for (int i = 0; i < dout_size; i++){
-
-        //     dout_sel[i] = (data_t)int_accum[i];
-        // }
     }
 
     free(int_accum);
@@ -108,108 +113,21 @@ void conv2d_f32(data_t* dout,
 
 
 
-// // ¾í»ı
-// void conv2d_f32(data_t* dout,
-//                 data_t* din,
-//                 data_t din_hgt,
-//                 data_t din_wid,
-//                 const data_t* ker,
-//                 const data_t* bias,
-//                 const int* shape)
+// // å·ç§¯
+// void conv2d_f32(data_t* dout,          // è¾“å‡ºæ•°æ® 
+//     			data_t* din,           // è¾“å…¥æ•°æ®
+// 				data_t din_hgt,          // è¾“å…¥æ•°æ®ï¼ˆçŸ©é˜µï¼‰é«˜åº¦
+// 				data_t din_wid,          // è¾“å…¥æ•°æ®ï¼ˆçŸ©é˜µï¼‰å®½åº¦
+// 				const data_t* ker,     // å·ç§¯æ ¸
+// 				const data_t* bias,    // åç½®
+// 				const int* shape)     // å·ç§¯æ ¸å½¢çŠ¶
 // {
-//     data_t din_size = din_hgt * din_wid;
-    
-//     // ¾í»ıºË³ß´ç
-//     int num_cout = shape[0], num_cin = shape[1];
-//     int k_hgt = shape[2], k_wid = shape[3];
-//     int k_size = k_hgt * k_wid;
-    
-//     // Êä³öÊı¾İ³ß´ç
-//     int dout_hgt = (din_hgt - k_hgt + 1);
-//     int dout_wid = (din_wid - k_wid + 1);
-//     int dout_size = dout_hgt * dout_wid;
-    
-//     const data_t* din_sel;
-//     const data_t* ker_sel;
-//     const data_t* ker_elm;
-//     const data_t* din_elm;
-//     const data_t* din_elm0;
-//     data_t* dout_sel;
-//     int32_t* dout_elm;  // ĞŞ¸Ä´Ë´¦µÄÉùÃ÷
-
-//     // Ê¹ÓÃint32_tÀàĞÍµÄÊı×éÀ´±£´æÀÛ»ı½á¹û
-//     int32_t* int_accum = (int32_t*)malloc(dout_size * sizeof(int32_t));
-
-//     // ³õÊ¼»¯ÀÛ»ı½á¹ûÎª0
-//     for (int i = 0; i < dout_size; i++)
-//     {
-//         int_accum[i] = 0;
-//     }
-
-//     ker_sel = ker; 
-//     dout_sel = dout; 
-//     for (int cout = 0; cout < num_cout; cout++, dout_sel += dout_size)
-//     {
-//         for (int n = 0; n < dout_size; n++)
-//         {
-//             int_accum[n] = bias[cout];
-//         }
-
-//         din_sel = din;  
-//         for (int cin = 0; cin < num_cin; cin++, din_sel += din_size, ker_sel += k_size)
-//         {
-//             ker_elm = ker_sel;
-//             din_elm0 = din_sel;
-
-//             for (int kh = 0; kh < k_hgt; kh++, din_elm0 += din_wid)
-//             {
-//                 for (int kw = 0; kw < k_wid; kw++, ker_elm++)
-//                 {
-//                     if (!*ker_elm) continue;
-//                     din_elm = &din_elm0[kw];
-//                     dout_elm = int_accum;
-
-//                     for (int h = 0; h < dout_hgt; h++, din_elm += din_wid)
-//                     {
-//                         for (int w = 0; w < dout_wid; w++, dout_elm++)
-//                         {
-//                             // ÀÛ»ı¹ı³ÌÊ¹ÓÃint32_t
-//                             *dout_elm += din_elm[w] * (*ker_elm);
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-
-//         // »¹Ô­ÎªQ15¸ñÊ½
-//         for (int i = 0; i < dout_size; i++)
-//         {
-//             // ×¢Òâ´Ë´¦µÄÀàĞÍ×ª»»
-//             dout_sel[i] = (data_t)(int_accum[i] >> 15);
-//         }
-//     }
-
-//     free(int_accum);
-//     return;
-// }
-
-// // ¾í»ı
-// void conv2d_f32(data_t* dout,          // Êä³öÊı¾İ 
-//     			data_t* din,           // ÊäÈëÊı¾İ
-// 				data_t din_hgt,          // ÊäÈëÊı¾İ£¨¾ØÕó£©¸ß¶È
-// 				data_t din_wid,          // ÊäÈëÊı¾İ£¨¾ØÕó£©¿í¶È
-// 				const data_t* ker,     // ¾í»ıºË
-// 				const data_t* bias,    // Æ«ÖÃ
-// 				const int* shape)     // ¾í»ıºËĞÎ×´
-// {
-// 	int din_size = din_hgt * din_wid;
-	
-// 	// ¾í»ıºË³ß´ç
+// 	int din_size = din_hgt * din_wid;	
+// 	// å·ç§¯æ ¸å°ºå¯¸
 // 	int num_cout = shape[0], num_cin = shape[1];
 // 	int k_hgt = shape[2], k_wid = shape[3];
-// 	int k_size = k_hgt * k_wid;
-	
-// 	// Êä³öÊı¾İ³ß´ç
+// 	int k_size = k_hgt * k_wid;	
+// 	// è¾“å‡ºæ•°æ®å°ºå¯¸
 // 	int dout_hgt = (din_hgt - k_hgt + 1);
 // 	int dout_wid = (din_wid - k_wid + 1);
 // 	int dout_size = dout_hgt * dout_wid;
@@ -222,33 +140,33 @@ void conv2d_f32(data_t* dout,
 // 	data_t* dout_sel;
 // 	data_t* dout_elm;
 	
-// 	ker_sel = ker;  // ¸ÃÖ¸Õë¸ú×ÙÃ¿´Î¾í»ıÊ¹ÓÃµÄ¾í»ıºË¾ØÕó
-// 	dout_sel = dout;  // ¸ÃÖ¸Õë¸ú×ÙcoutÍ¨µÀÊä³öÊı¾İ 
+// 	ker_sel = ker;  // è¯¥æŒ‡é’ˆè·Ÿè¸ªæ¯æ¬¡å·ç§¯ä½¿ç”¨çš„å·ç§¯æ ¸çŸ©é˜µ
+// 	dout_sel = dout;  // è¯¥æŒ‡é’ˆè·Ÿè¸ªcouté€šé“è¾“å‡ºæ•°æ® 
 // 	for (int cout=0; cout < num_cout; cout++, dout_sel+=dout_size)
 // 	{
-// 		// ¼ÓÉÏÆ«ÖÃ
+// 		// åŠ ä¸Šåç½®
 // 		for(int n = 0; n < dout_size; n++)
 // 		{
 // 			dout_sel[n] = bias[cout];
 // 		}
 		
-// 		din_sel = din;  // Ö¸ÏòcinÍ¨µÀÊäÈëÊı¾İ
+// 		din_sel = din;  // æŒ‡å‘ciné€šé“è¾“å…¥æ•°æ®
 // 		for (int cin = 0; cin < num_cin; cin++, din_sel += din_size, ker_sel += k_size)
 // 		{
 // 			ker_elm = ker_sel;
 // 			din_elm0 = din_sel;
-// 			// kh Îª¾í»ıºËÄÚÔªËØĞĞºÅ
-// 			// din_elm0 Ö¸Ïò¾í»ıºË£¨kh, kw£©Î»ÖÃÔªËØ
+// 			// kh ä¸ºå·ç§¯æ ¸å†…å…ƒç´ è¡Œå·
+// 			// din_elm0 æŒ‡å‘å·ç§¯æ ¸ï¼ˆkh, kwï¼‰ä½ç½®å…ƒç´ 
 // 			for (int kh = 0; kh < k_hgt; kh++, din_elm0 += din_wid)
 // 			{
-// 				// kw ¶ÔÓ¦¾í»ıºËÄÚ²¿ÔªËØµÄÁĞºÅ
-// 				// ker_elm0 Ö¸ÏòÊı¾İ»¬¶¯´°ÄÚºÍker_elm¶ÔÓ¦µÄÊı¾İĞĞµÄµÚÒ»¸öÊı¾İ 
+// 				// kw å¯¹åº”å·ç§¯æ ¸å†…éƒ¨å…ƒç´ çš„åˆ—å·
+// 				// ker_elm0 æŒ‡å‘æ•°æ®æ»‘åŠ¨çª—å†…å’Œker_elmå¯¹åº”çš„æ•°æ®è¡Œçš„ç¬¬ä¸€ä¸ªæ•°æ® 
 // 				for (int kw = 0; kw < k_wid; kw++, ker_elm++)
 // 				{
 // 					if (!*ker_elm) continue;
 // 					din_elm = &din_elm0[kw];
 // 					dout_elm = dout_sel;
-// 					// din_elm Ö¸ÏòÊı¾İ»¬¶¯´°µÄÏÂÒ»ĞĞÊı¾İºÍker_elm¶ÔÓ¦µÄÊı¾İÎ»ÖÃ
+// 					// din_elm æŒ‡å‘æ•°æ®æ»‘åŠ¨çª—çš„ä¸‹ä¸€è¡Œæ•°æ®å’Œker_elmå¯¹åº”çš„æ•°æ®ä½ç½®
 // 					for (int h = 0; h < dout_hgt; h++, din_elm+=din_wid)
 // 					{
 // 						for (int w = 0; w < dout_wid; w++, dout_elm++)
@@ -264,14 +182,14 @@ void conv2d_f32(data_t* dout,
 // 	return;
 // }
 
-// // È«Á¬½Ózuiyuanshide
-// void fc_32(data_t* dout,            // Êä³öÊı¾İ  
-// 		   data_t* din,             // ÊäÈëÊı¾İ
-// 		   const data_t* weight,    // È¨ÖØ
-// 		   const data_t* bias,      // Æ«ÖÃ
-// 		   const int32_t* shape)       // È¨ÖØ¾ØÕóĞÎ×´
+// // å…¨è¿æ¥zuiyuanshide
+// void fc_32(data_t* dout,            // è¾“å‡ºæ•°æ®  
+// 		   data_t* din,             // è¾“å…¥æ•°æ®
+// 		   const data_t* weight,    // æƒé‡
+// 		   const data_t* bias,      // åç½®
+// 		   const int32_t* shape)       // æƒé‡çŸ©é˜µå½¢çŠ¶
 // {
-// 	// Êı¾İ³ß´ç
+// 	// æ•°æ®å°ºå¯¸
 // 	int num_cout = shape[0], num_cin = shape[1];
 	
 // 	const data_t* w = weight;
@@ -288,89 +206,53 @@ void conv2d_f32(data_t* dout,
 // 	}  
 // }
 
-
-// // È«Á¬½Ó
-// void fc_32(data_t* dout,
-//            data_t* din,
-//            const data_t* weight,
-//            const data_t* bias,
-//            const int32_t* shape)
-// {
-//     // Êı¾İ³ß´ç
-//     int num_cout = shape[0], num_cin = shape[1];
-
-//     const data_t* w = weight;
-//     const data_t* d;
-
-//     // Ê¹ÓÃint32_tÀàĞÍÀ´ÀÛ»ıÈ«Á¬½Ó½á¹û
-//     int32_t* int_accum = (int32_t*)malloc(num_cout * sizeof(int32_t));
-
-//     // ³õÊ¼»¯ÀÛ»ı½á¹ûÎª0
-//     for (int i = 0; i < num_cout; i++)
-//     {
-//         int_accum[i] = bias[i];
-//     }
-
-//     for (int cout = 0; cout < num_cout; cout++)
-//     {
-//         d = din;
-//         for (int cin = 0; cin < num_cin; cin++, w++, d++)
-//         {
-//             // ÀÛ»ı¹ı³ÌÊ¹ÓÃint32_t
-//             if (*w) int_accum[cout] += (*w) * (*d);
-//         }
-//     }
-
-//     // »¹Ô­ÎªQ15¸ñÊ½
-//     for (int i = 0; i < num_cout; i++)
-//     {
-//         dout[i] = (data_t)(int_accum[i] >> 15);
-//     }
-
-//     free(int_accum);
-// }
-
-
-// È«Á¬½Ó  shuchushi2
-void fc_32(data_t *dout,            // Êä³öÊı¾İ  
-           data_t *din,             // ÊäÈëÊı¾İ
-           const data_t *weight,    // È¨ÖØ
-           const data_t *bias,      // Æ«ÖÃ
-           const int32_t *shape)     // È¨ÖØ¾ØÕóĞÎ×´
-
+void fc_32(data_t *dout,            // è¾“å‡ºæ•°æ®  
+           data_t *din,             // è¾“å…¥æ•°æ®
+           const data_t *weight,    // æƒé‡
+           const data_t *bias,      // åç½®
+           const int32_t *shape)    // æƒé‡çŸ©é˜µå½¢çŠ¶
 {
-    // Êı¾İ³ß´ç
+    // æ•°æ®å°ºå¯¸
     int num_cout = shape[0], num_cin = shape[1];
 
     const data_t* w = weight;
     const data_t* d;
 
-    // Ê¹ÓÃ¸ü´óÎ»ÊıµÄÊı¾İÀàĞÍ´æ´¢½á¹û
-    int32_t* large_output = malloc(num_cout * sizeof(int32_t));
+    // ä½¿ç”¨æ›´å¤§ä½æ•°çš„æ•°æ®ç±»å‹å­˜å‚¨ç»“æœ
+    int32_t* int_accum = malloc(num_cout * sizeof(int32_t));
 
+    // ç´¯åŠ è¿‡ç¨‹
     for (int cout = 0; cout < num_cout; cout++)
     {
-        large_output[cout] = bias[cout];
+        int_accum[cout] = bias[cout];
         d = din;
         for (int cin = 0; cin < num_cin; cin++, w++, d++)
         {
-            if (*w) large_output[cout] += (*w) * (*d);
+            if (*w) int_accum[cout] += (*w) * (*d);
         }
     }
 
-    // ½«large_outputËõ·ÅºóµÄ½á¹û×ª»Ødata_tÀàĞÍ
-    for (int i = 0; i < num_cout; i++) {
-    
-        dout[i] = (data_t)large_output[i];
-        //dout[i] = large_output[i]* 0.1;
+    // ç¼©æ”¾ç»“æœå¹¶è½¬æ¢ä¸ºdata_tç±»å‹
+    for (int i = 0; i < num_cout; i++){
+        float scale_factor = 0.001; // å‡è®¾ç¼©æ”¾æ¯”ä¾‹å¯ä»¥æ ¹æ®éœ€æ±‚è°ƒæ•´
+        int32_t scaled_value = (int32_t)(int_accum[i] * scale_factor);
+        //printf("%d\n",scaled_value);
+        // è¿›è¡Œé¥±å’Œæˆ–æˆªæ–­å¤„ç†ï¼Œç¡®ä¿ç»“æœåœ¨data_tç±»å‹çš„èŒƒå›´å†…
+        if (scaled_value > INT16_MAX)
+            dout[i] = INT16_MAX;
+        else if (scaled_value < INT16_MIN)
+            dout[i] = INT16_MIN;
+        else
+            dout[i] = (data_t)scaled_value;
     }
 
-    // ÊÍ·ÅÄÚ´æ
-    free(large_output);
+    // é‡Šæ”¾å†…å­˜
+    free(int_accum);
 }
 
 
-// ReLU¼¤»îº¯Êı£¨sizeÉèÖÃÎª×ÜµÄÊı¾İ¸öÊı£¬Ò»²ãforÒ²¿ÉÒÔ×ö¶şÎ¬µÄReLU¼ÆËã£©
+
+// ReLUæ¿€æ´»å‡½æ•°ï¼ˆsizeè®¾ç½®ä¸ºæ€»çš„æ•°æ®ä¸ªæ•°ï¼Œä¸€å±‚forä¹Ÿå¯ä»¥åšäºŒç»´çš„ReLUè®¡ç®—ï¼‰
 void relu(data_t* dout, data_t* din, int32_t size)
 {
 	for (int n = 0; n < size; n++)
@@ -379,13 +261,13 @@ void relu(data_t* dout, data_t* din, int32_t size)
 	}
 }
 
-// ×î´ó³Ø»¯ 
-void maxpool2d(data_t* dout,    // Êä³öÊı¾İ
-			   data_t* din,     // ÊäÈëÊı¾İ
-			   int32_t din_hgt,    // ÊäÈëÊı¾İ£¨¾ØÕó£©¸ß¶È
-			   int32_t din_wid,    // ÊäÈëÊı¾İ£¨¾ØÕó£©¿í¶È
-			   int32_t num_c,      // Í¨µÀÊı
-			   int32_t ksize)      // ³Ø»¯´°¿Ú³ß´ç
+// æœ€å¤§æ± åŒ– 
+void maxpool2d(data_t* dout,    // è¾“å‡ºæ•°æ®
+			   data_t* din,     // è¾“å…¥æ•°æ®
+			   int32_t din_hgt,    // è¾“å…¥æ•°æ®ï¼ˆçŸ©é˜µï¼‰é«˜åº¦
+			   int32_t din_wid,    // è¾“å…¥æ•°æ®ï¼ˆçŸ©é˜µï¼‰å®½åº¦
+			   int32_t num_c,      // é€šé“æ•°
+			   int32_t ksize)      // æ± åŒ–çª—å£å°ºå¯¸
 {
 	int dout_hgt = 1 + (din_hgt - ksize) / ksize;
 	int dout_wid = 1 + (din_wid - ksize) / ksize;
@@ -398,9 +280,9 @@ void maxpool2d(data_t* dout,    // Êä³öÊı¾İ
 		{
 			for (int w = 0; w < dout_wid; w++)
 			{
-				// Ö¸ÕëÖ¸Ïò»¬¶¯´°¿ÚÔÚÊı×édinÖĞµÄÎ»ÖÃ 
+				// æŒ‡é’ˆæŒ‡å‘æ»‘åŠ¨çª—å£åœ¨æ•°ç»„dinä¸­çš„ä½ç½® 
 				din_sel = &din[c * din_hgt * din_wid + h * ksize * din_wid + w*ksize];
-				// ¶Ô»¬¶¯´°¿ÚÄÚµÄÔªËØ¼ÆËã×î´óÖµ
+				// å¯¹æ»‘åŠ¨çª—å£å†…çš„å…ƒç´ è®¡ç®—æœ€å¤§å€¼
 				m = din_sel[0];
 				for (int y = 0; y < ksize; y++)
 				{
@@ -419,12 +301,12 @@ void maxpool2d(data_t* dout,    // Êä³öÊı¾İ
 }
 
 
-// ¶àÎ¬×ª»¯ÎªÒ»Î¬
-void flatten(data_t* dout,    // Êä³öÊı¾İ 
-             data_t* din,     // ÊäÈëÊı¾İ 
-             int32_t out_len,  // Êä³ö³¤¶È 
-             int32_t in_size,  // ÊäÈëÊı¾İ£¨¾ØÕó£©´óĞ¡ 
-             int32_t num_c)    // Í¨µÀÊı
+// å¤šç»´è½¬åŒ–ä¸ºä¸€ç»´
+void flatten(data_t* dout,    // è¾“å‡ºæ•°æ® 
+             data_t* din,     // è¾“å…¥æ•°æ® 
+             int32_t out_len,  // è¾“å‡ºé•¿åº¦ 
+             int32_t in_size,  // è¾“å…¥æ•°æ®ï¼ˆçŸ©é˜µï¼‰å¤§å° 
+             int32_t num_c)    // é€šé“æ•°
 {
     for(int i = 0; i < num_c; i++)
     {
